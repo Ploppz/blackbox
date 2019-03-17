@@ -23,12 +23,11 @@ categories = ["algorithms", "science"]
 license = "MIT"
 
 
-[lib]
-proc-macro = true
-
 [dependencies]
-
-syn = "0.15.27"
-quote = "0.6.11"
-proc-macro2 = "0.4.27"
 rand = "0.6.5"
+itertools = "0.8.0"
+rusty-machine = "0.5.4"
+probability = "0.15.12"
+
+[dev-dependencies]
+blackbox_derive = { path = "../blackbox_derive"}

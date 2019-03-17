@@ -1,86 +1,119 @@
-#![recursion_limit="128"]
-extern crate proc_macro;
 #[macro_use]
-extern crate quote;
-#[macro_use]
-extern crate syn;
+extern crate itertools;
 
-use proc_macro::TokenStream;
-use syn::{
-    Type, Ident, Lit,
-    parse::{Parse, ParseStream, Result}
-};
+pub mod bayesian;
 
-mod parse;
-use parse::*;
+use bayesian::*;
 
-#[proc_macro]
-pub fn make_optimizer(item: TokenStream) -> TokenStream {
-    let Optimizer {struct_name, vars, evaluate} = parse_macro_input!(item as Optimizer);
 
-    let names = vars.0.iter().map(|x| x.name.clone());
-    let names2 = names.clone();
-    let names3 = names.clone();
-    let names4 = names.clone();
-    let names5 = names.clone();
+pub trait BlackboxInput: Sized + Clone {
+    fn evaluate(&self) -> f64;
+    /// Sample randomly from the domain
+    fn random() -> Self;
+    fn set(&mut self, i: usize, val: Value);
+    fn get(&self, i: usize) -> Value;
+    fn n_variables() -> usize;
 
-    let types = vars.0.iter().map(|x| x.ty.clone());
-    let types2 = types.clone();
-    let types3 = types.clone();
+    fn get_domains() -> Vec<Variable>;
 
-    let lows = vars.0.iter().map(|x| x.low.clone());
-    let highs = vars.0.iter().map(|x| x.high.clone());
+    fn to_numbers(&self) -> Vec<f64> {
+        // TODO: A more efficient version can be generated in the proc macro, but then we wouldn't
+        // be able to provide it for manual implementations I think..
+        (0..Self::n_variables()).map(|i| self.get(i).as_num()).collect()
+    }
 
-    let result = TokenStream::from(quote! {
-        #[derive(Clone, Debug)]
-        pub struct #struct_name {
-            #( pub #names: #types ),*
+    fn bayesian_search(init_samples: usize, max_iter: usize) -> Self {
+        use rusty_machine::linalg::Matrix;
+        assert!(init_samples < max_iter);
+
+        let to_matrix = |source: &[Self]| {
+            let flat: Vec<f64> = source.iter().map(|x| x.to_numbers()).flatten().collect();
+            Matrix::new(init_samples, Self::n_variables(), flat)
+        };
+
+        println!("= Initial samples =");
+        let mut best_x = None;
+        let mut best_y = std::f64::NEG_INFINITY;
+
+        let mut x = Vec::<Self>::new();
+        let mut y = Vec::<f64>::new();
+        for i in 0..init_samples {
+            let sample_x = Self::random();
+            let sample_y = sample_x.evaluate();
+            if sample_y > best_y {
+                best_x = Some(sample_x);
+                best_y = sample_y;
+            }
+
         }
-        impl #struct_name {
-            pub fn evaluate(&self) -> f64 {
-                let Self {#( #names4 ),*} = *self;
-                #evaluate
+        
+        for i in init_samples..max_iter {
+            println!("= Iter {}/{} =", i+1, max_iter-init_samples+1);
+            let surrogate = GPSurrogate::<Self>::new(&to_matrix(&x), &y.clone().into());
+            let sample_x = surrogate.maximize(best_y);
+            let sample_y = sample_x.evaluate();
+
+            if sample_y > best_y {
+                best_x = Some(sample_x.clone());
+                best_y = sample_y;
+            }
+            x.push(sample_x);
+            y.push(sample_y);
+        }
+        best_x.unwrap()
+    }
+
+    fn grid_search(max_iter: Option<usize>) -> Self {
+        let config = Self::random();
+        unimplemented!()
+    }
+    fn random_search(max_iter: usize) -> Self {
+        let mut config = Self::random();
+
+        let mut best_score = std::f64::NEG_INFINITY;
+        let mut best_config = config.clone();
+        let mut i = 0;
+        loop {
+            // Sample random configuration
+            config = Self::random();
+            // Evaluate
+            let score = config.evaluate();
+            if score > best_score {
+                best_score = score;
+                best_config = config.clone();
             }
 
-            pub fn random_search(max_iter: usize) -> #struct_name {
-                use rand::distributions::{Uniform, Distribution};
-                let mut rng = rand::thread_rng();
-                let mut config = #struct_name {
-                    #( #names2: #types2::default() ),*
-                };
-
-                let mut best_score = std::f64::NEG_INFINITY;
-                let mut best_config = config.clone();
-                let mut i = 0;
-                loop {
-                    // Sample random configuration
-                    #(
-                        config.#names5 = Uniform::new(#lows, #highs).sample(&mut rng);
-                    )*
-                    // Evaluate
-                    let score = config.evaluate();
-                    if score > best_score {
-                        best_score = score;
-                        best_config = config.clone();
-                    }
-
-                    i += 1;
-                    if i >= max_iter {
-                        break;
-                    }
-                }
-
-                best_config
-            }
-            pub fn grid_search(max_iter: Option<usize>) -> #struct_name {
-                let config = #struct_name {
-                    #( #names3: #types3::default() ),*
-                };
-                unimplemented!()
+            i += 1;
+            if i >= max_iter {
+                break;
             }
         }
 
-    });
-    // println!("\n{}\n", result);
-    result
+        best_config
+    }
+}
+
+
+
+pub struct Variable {
+    domain: Domain,
+    // TODO: distribution
+}
+
+pub enum Domain {
+    Real {low: f64, high: f64},
+    Discrete {low: i32, high: i32},
+}
+
+pub enum Value {
+    Real (f64),
+    Discrete (i32),
+}
+impl Value {
+    pub fn as_num(&self) -> f64 {
+        match *self {
+            Value::Real(x) => x,
+            Value::Discrete(n) => n as f64,
+        }
+    }
 }

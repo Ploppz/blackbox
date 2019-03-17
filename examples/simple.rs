@@ -1,6 +1,9 @@
 #[macro_use]
+extern crate blackbox_derive;
 extern crate blackbox;
-extern crate rand;
+
+use blackbox::BlackboxInput;
+
 
 fn blackbox(c: f64, d: usize) -> f64 {
     c * d as f64
@@ -10,6 +13,7 @@ make_optimizer! {
     Configuration {
         c: f64 = 0.0 .. 1.0,
         d: usize = 0 .. 5,
+        // e: String = ["a", "b", "c"],
     }
     
     // Arbitrary code follows, which should return f64 (the 'score' to optimize)
