@@ -3,9 +3,7 @@ use rusty_machine::{
     linalg::{Matrix, Vector}
 };
 use crate::{Variable, Domain, BlackboxInput};
-
 use probability::distribution::{Gaussian, Continuous, Distribution};
-
 use std::cmp::max;
 
 

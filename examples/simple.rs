@@ -22,7 +22,13 @@ make_optimizer! {
 
 fn main() {
     const MAX_SCORE: f64 = 4.0;
-    let config = Configuration::random_search(100);
+    println!(" = Random search =");
+    let config = Configuration::random_search(10);
+    println!("{:?}", config);
+    println!("Score: {} (max: {})", config.evaluate(), MAX_SCORE);
+
+    println!(" = Bayesian optimization =");
+    let config = Configuration::bayesian_search(3, 10);
     println!("{:?}", config);
     println!("Score: {} (max: {})", config.evaluate(), MAX_SCORE);
 }

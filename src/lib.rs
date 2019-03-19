@@ -6,21 +6,15 @@ pub mod bayesian;
 use bayesian::*;
 
 
-pub trait BlackboxInput: Sized + Clone {
+pub trait BlackboxInput: Sized + Clone + std::fmt::Debug {
     fn evaluate(&self) -> f64;
     /// Sample randomly from the domain
     fn random() -> Self;
-    fn set(&mut self, i: usize, val: Value);
-    fn get(&self, i: usize) -> Value;
     fn n_variables() -> usize;
 
     fn get_domains() -> Vec<Variable>;
 
-    fn to_numbers(&self) -> Vec<f64> {
-        // TODO: A more efficient version can be generated in the proc macro, but then we wouldn't
-        // be able to provide it for manual implementations I think..
-        (0..Self::n_variables()).map(|i| self.get(i).as_num()).collect()
-    }
+    fn to_numbers(&self) -> Vec<f64>;
 
     fn bayesian_search(init_samples: usize, max_iter: usize) -> Self {
         use rusty_machine::linalg::Matrix;
@@ -28,10 +22,10 @@ pub trait BlackboxInput: Sized + Clone {
 
         let to_matrix = |source: &[Self]| {
             let flat: Vec<f64> = source.iter().map(|x| x.to_numbers()).flatten().collect();
-            Matrix::new(init_samples, Self::n_variables(), flat)
+            Matrix::new(flat.len() / Self::n_variables(), Self::n_variables(), flat)
         };
 
-        println!("= Initial samples =");
+        // println!("= Initial samples =");
         let mut best_x = None;
         let mut best_y = std::f64::NEG_INFINITY;
 
@@ -41,14 +35,16 @@ pub trait BlackboxInput: Sized + Clone {
             let sample_x = Self::random();
             let sample_y = sample_x.evaluate();
             if sample_y > best_y {
-                best_x = Some(sample_x);
+                best_x = Some(sample_x.clone());
                 best_y = sample_y;
             }
+            x.push(sample_x);
+            y.push(sample_y);
 
         }
         
         for i in init_samples..max_iter {
-            println!("= Iter {}/{} =", i+1, max_iter-init_samples+1);
+            // println!("= Iter {}/{} =", i+1, max_iter-init_samples+1);
             let surrogate = GPSurrogate::<Self>::new(&to_matrix(&x), &y.clone().into());
             let sample_x = surrogate.maximize(best_y);
             let sample_y = sample_x.evaluate();
@@ -96,7 +92,7 @@ pub trait BlackboxInput: Sized + Clone {
 
 
 pub struct Variable {
-    domain: Domain,
+    pub domain: Domain,
     // TODO: distribution
 }
 
