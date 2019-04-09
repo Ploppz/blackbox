@@ -29,8 +29,9 @@ itertools = "0.8.0"
 rusty-machine = "0.5.4"
 probability = "0.15.12"
 
-# logger = {git = "https://github.com/Ploppz/universe"} # TODO ... temporary solution
-logger = {path = "/home/ploppz/code/rust/universe/libs/logger"}
+slog = "2.4.1"
+slog-term = "2.4.0"
+slog-async = "2.3.0"
 
 [dev-dependencies]
 blackbox_derive = { path = "../blackbox_derive"}
