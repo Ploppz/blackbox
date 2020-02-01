@@ -1,6 +1,6 @@
 [package]
 name = "blackbox"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Erlend Langseth <3rlendhl@gmail.com>"]
 edition = "2018"
 
@@ -35,4 +35,5 @@ slog-async = "2.3.0"
 
 [dev-dependencies]
 blackbox_derive = { git = "https://github.com/Ploppz/blackbox_derive.git" }
-
+slog-term = "2.5.0"
+slog-async = "2.4.0"

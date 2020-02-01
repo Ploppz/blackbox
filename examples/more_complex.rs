@@ -3,6 +3,7 @@ extern crate blackbox_derive;
 extern crate blackbox;
 
 use blackbox::BlackboxInput;
+use slog::{o, info, Drain};
 
 
 fn blackbox(c: f64, d: f64) -> f64 {
@@ -21,25 +22,31 @@ make_optimizer! {
 }
 
 fn main() {
-    let MAX_SCORE: f64 = Configuration {c:0.0001, d:-1.0001}.evaluate();
-    let N_SAMPLES: usize = 40;
-    let N_EXP: usize = 30;
+    let decorator = slog_term::TermDecorator::new().build();
+
+    let drain = slog_term::CompactFormat::new(decorator).build().fuse();
+    let drain = slog_async::Async::new(drain).build().fuse();
+    let log = slog::Logger::root(drain, o!());
+
+    let max_score: f64 = Configuration {c:0.0001, d:-1.0001}.evaluate(log.clone());
+    const N_SAMPLES: usize = 40;
+    const N_EXP: usize = 30;
     let mut mean = 0.0;
-    println!(" = Random search =");
     for i in 0..N_EXP {
-        let config = Configuration::random_search(N_SAMPLES);
-        mean += config.evaluate();
+        let log = log.new(o!("Algorithm" => "Random search", "run" => i+1, "total runs" => N_EXP));
+        let config = Configuration::random_search(N_SAMPLES, log.clone());
+        mean += config.evaluate(log.clone());
     }
     mean /= N_EXP as f64;
-    println!("Score: {} (max: {})", mean, MAX_SCORE);
+    info!(log, "Random searches complete"; "mean score" => mean, "max score" => max_score);
 
 
     mean = 0.0;
-    println!(" = Bayesian optimization =");
     for i in 0..N_EXP {
-        let config = Configuration::bayesian_search(2, N_SAMPLES - 2);
-        mean += config.evaluate();
+        let log = log.new(o!("Algorithm" => "Bayesian optimization", "run" => i+1, "total runs" => N_EXP));
+        let config = Configuration::bayesian_search(2, N_SAMPLES - 2, log.clone());
+        mean += config.evaluate(log.clone());
     }
     mean /= N_EXP as f64;
-    println!("Score: {} (max: {})", mean, MAX_SCORE);
+    println!("Score: {} (max: {})", mean, max_score);
 }

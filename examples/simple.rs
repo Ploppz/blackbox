@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate blackbox_derive;
 extern crate blackbox;
+use slog::o;
 
 use blackbox::BlackboxInput;
 
@@ -21,14 +22,17 @@ make_optimizer! {
 }
 
 fn main() {
+    let drain = slog::Discard;
+    let log = slog::Logger::root(drain, o!());
+
     const MAX_SCORE: f64 = 4.0;
     println!(" = Random search =");
-    let config = Configuration::random_search(10);
+    let config = Configuration::random_search(10, log.clone());
     println!("{:?}", config);
-    println!("Score: {} (max: {})", config.evaluate(), MAX_SCORE);
+    println!("Score: {} (max: {})", config.evaluate(log.clone()), MAX_SCORE);
 
     println!(" = Bayesian optimization =");
-    let config = Configuration::bayesian_search(3, 10);
+    let config = Configuration::bayesian_search(3, 10, log.clone());
     println!("{:?}", config);
-    println!("Score: {} (max: {})", config.evaluate(), MAX_SCORE);
+    println!("Score: {} (max: {})", config.evaluate(log), MAX_SCORE);
 }

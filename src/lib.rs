@@ -1,11 +1,7 @@
-#[macro_use]
-extern crate itertools;
-
 pub mod bayesian;
 
 use bayesian::*;
-use std::fmt::Write;
-use slog::Logger;
+use slog::{Logger, info};
 
 pub trait BlackboxInput: Sized + Clone + std::fmt::Debug {
     fn evaluate(&self, log: Logger) -> f64;
@@ -33,7 +29,7 @@ pub trait BlackboxInput: Sized + Clone + std::fmt::Debug {
         let mut x = Vec::<Self>::new();
         let mut y = Vec::<f64>::new();
         for i in 0..init_samples {
-            println!("Blackbox Iteration {}/{}", i+1, max_iter);
+            info!(log, "Blackbox Iteration {}/{} (initial samples)", i+1, max_iter);
             let sample_x = Self::random();
             let sample_y = sample_x.evaluate(log.clone());
             if sample_y > best_y {
@@ -46,7 +42,7 @@ pub trait BlackboxInput: Sized + Clone + std::fmt::Debug {
         }
         
         for i in init_samples..max_iter {
-            println!("Blackbox Iteration {}/{}", i+1, max_iter);
+            info!(log, "Blackbox Iteration {}/{}", i+1, max_iter);
             let surrogate = GPSurrogate::<Self>::new(&to_matrix(&x), &y.clone().into());
             let sample_x = surrogate.maximize(best_y);
             let sample_y = sample_x.evaluate(log.clone());
@@ -62,8 +58,8 @@ pub trait BlackboxInput: Sized + Clone + std::fmt::Debug {
     
     }
 
-    fn grid_search(max_iter: Option<usize>) -> Self {
-        let config = Self::random();
+    fn grid_search(_max_iter: Option<usize>) -> Self {
+        let _config = Self::random();
         unimplemented!()
     }
     fn random_search(max_iter: usize, log: Logger) -> Self {
